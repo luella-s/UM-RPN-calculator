@@ -1,0 +1,15 @@
+.section text
+    .temps r6, r7
+    .zero r0
+
+.section data
+        .space 10000
+    endstack:
+
+.section rodata
+
+.section init
+    r0 := 0
+    r2 := endstack
+    goto call_main linking r1
+    halt
