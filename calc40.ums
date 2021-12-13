@@ -87,9 +87,9 @@
 
     continue:
         output "* In continue\n"
-        goto check1 linking r1      # asserts value stack has at least 1 value
 
         pop r5 off stack r3
+        r1 := r1 - '0'
         r5 := r5 * 10
         r5 := r5 + r1
         push r5 on stack r3
@@ -117,8 +117,6 @@
     new_line:
         push r1 on stack r2
         push r4 on stack r2
-
-        output "In new_line\n"
 
         r4 := r3        # r4 points to the top of the value stack
         goto new_line_loop
@@ -152,4 +150,6 @@
         goto r5 
 
     exit:
+        pop r4 off stack r2
+        pop r5 off stack r2
         halt
