@@ -1,0 +1,82 @@
+.section text
+    .temps r6, r7
+    .zero r0
+
+.section init
+    r0 := 0
+
+.section text
+    new_line: # print_stack
+        push r1 on stack r2
+        push r4 on stack r2
+
+        r1 := m[r0][r4]
+        
+        goto new_line_loop
+
+    new_line_loop:
+        if (r4 == valstack) goto finish_new_line using r5
+        r1 := m[r0][r4]
+
+        output ">>> "
+
+        if (r1 == 0) goto print_zero
+        if (r1 <s 0) goto print_neg using r1
+
+        push r1 on stack r2
+        goto print_pos linking r1
+        output "\n"
+        pop stack r2
+
+        r4 := r4 + 1
+        
+        goto new_line_loop
+
+    print_zero:
+        r5 := 48
+        output r5
+
+        goto finish_new_line
+
+    print_neg:
+        r5 := r5 * -1
+        output 45
+        push r5 on stack r2
+        goto print_pos linking r1
+        pop stack r2
+
+        goto finish_new_line
+
+    print_pos:
+        push r1 on stack r2
+        push r4 on stack r2
+        
+        r5 := m[r0][r2 + 2]                 # r5 stores the current value
+
+        r4 := r5 / 10
+        push r5 on stack r2
+        if (r4 == 0) goto base_case_print using r1
+        pop stack r2
+
+        push r4 on stack r2
+        goto print_pos linking r1
+        pop stack r2
+
+        r4 := r5 mod 10                     
+        r4 := r4 + 48
+        output r4
+        
+        goto finish_new_line
+
+    base_case_print:
+        pop r5 off stack r2             # r5 stores the current value
+        r4 := r5 mod 10
+        r4 := r4 + 48
+        output r4
+
+        goto finish_new_line
+
+    finish_new_line:
+        pop r4 off stack r2
+        pop r5 off stack r2
+        goto r5
