@@ -6,9 +6,9 @@
         .space 10000
     endstack:
 
-.section rodata
-
 .section init
     r0 := 0
     r2 := endstack
-    goto call_main linking r1
+
+.section text
+    goto call_main

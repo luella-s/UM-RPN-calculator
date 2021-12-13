@@ -21,11 +21,7 @@
 # r6 - temps
 # r7 - temps
 
-.section init
     init_jumptable:
-        push r1 on stack r2
-        push r4 on stack r2
-
         r4 := jumptable             # start of jumptable
         r5 := jumptable + 255       # end of table
         
@@ -36,43 +32,29 @@
         r4 := r4 + 1
         if (r4 <=s r5) goto init_jumptable_loop using r1
 
-    finish_init_jumptable:
-        pop r4 off stack r2
-        pop r5 off stack r2
-        goto r5
-
 
 .section text
     input_error:
         output "Unknown character '"
         output r1
-        output "'"
+        output "'\n"
         goto waiting
 
 .section init
     init_digits:
-        push r1 on stack r2
-        push r4 on stack r2
+        r4 := jumptable + '0'
+        r5 := jumptable + '9'
 
-        m[r0][jumptable + '0'] := digit
-        m[r0][jumptable + '1'] := digit
-        m[r0][jumptable + '2'] := digit
-        m[r0][jumptable + '3'] := digit
-        m[r0][jumptable + '4'] := digit
-        m[r0][jumptable + '5'] := digit
-        m[r0][jumptable + '6'] := digit
-        m[r0][jumptable + '7'] := digit
-        m[r0][jumptable + '8'] := digit
-        m[r0][jumptable + '9'] := digit
-
-        pop r4 off stack r2
-        pop r5 off stack r2
-        goto r5
+    init_digits_loop:
+        # output "Init digits\n"
+        m[r0][r4] := digit
+        r4 := r4 + 1
+        if (r4 <=s r5) goto init_digits_loop using r1
 
 .section text
     digit:
         output "In digits\n"
-        r5 := r1 - '0'
+        r5 := r1 - 48
         push r5 on stack r3
         goto entering
 
@@ -83,11 +65,13 @@
 
 .section text
     waiting:
+        output "In waiting\n"
         r1 := input()
         goto waiting_with_character
 
     waiting_with_character:
-        if (r1 == -1) r5 := exit using r5    # if EOF, set address to exit
+        output "In waiting w char\n"
+        if (r1 == -1) r5 := exit using r4    # if EOF, set address to exit
 
         r5 := jumptable + r1        # set address to jumptable offset
         r5 := m[r0][r5]
@@ -95,12 +79,14 @@
         goto waiting
 
     entering:
+        output "In entering\n"
         r1 := input()
-        if (r1 >=s '0') goto continue using r5
-        if (r1 <=s '9') goto continue using r5
-        goto waiting_with_character
+        if (r1 <s '0') goto waiting_with_character using r5
+        if (r1 >s '9') goto waiting_with_character using r5
+        goto continue
 
     continue:
+        output "In continue\n"
         goto check1 linking r1      # asserts value stack has at least 1 value
 
         pop r5 off stack r3
@@ -135,18 +121,20 @@
         output "In new_line\n"
 
         r4 := r3        # r4 points to the top of the value stack
+
+        if (r4 == valstack) goto finish_new_line using r5
         goto new_line_loop
 
     new_line_loop:
         if (r4 == valstack) goto finish_new_line using r5
 
-        r1 := m[r0][r4]         # push value stack top into call stack
-        push r1 on stack r2
-        goto print_stack linking r5
-        output 10
+        r5 := m[r0][r4]         # push value stack top into call stack
+        push r5 on stack r2
+        goto print_stack linking r1
+        output "\n"
         pop stack r2
 
-        r4 := r4 - 1
+        r4 := r4 + 1
         goto new_line_loop
 
     finish_new_line:
@@ -158,9 +146,6 @@
         push r1 on stack r2
         push r4 on stack r2
 
-        goto init_jumptable linking r1 
-        goto init_digits linking r1
-        goto init_rest linking r1
         goto waiting linking r1
 
         pop r4 off stack r2

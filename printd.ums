@@ -20,6 +20,7 @@
 
         push r5 on stack r2
         goto print_pos linking r1
+        pop stack r2
         
         goto finish_print_stack
 
@@ -27,7 +28,6 @@
         r5 := 48
         output r5
 
-        push r5 on stack r2
         goto finish_print_stack
 
     print_neg:
@@ -35,6 +35,8 @@
         output 45
         push r5 on stack r2
         goto print_pos linking r1
+        pop stack r2
+
         goto finish_print_stack
 
     print_pos:
@@ -57,7 +59,7 @@
         r4 := r4 + 48
         output r4
         
-        goto finish_print_pos
+        goto finish_print_stack
 
     base_case_print:
         pop r3 off stack r2
@@ -65,17 +67,9 @@
         r4 := r4 + 48
         output r4
 
-        goto finish_print_pos
-
-    finish_print_pos:
-        pop r3 off stack r2
-        pop r4 off stack r2
-        pop r5 off stack r2
-        goto r5
+        goto finish_print_stack
 
     finish_print_stack:
-        pop stack r2
-
         pop r3 off stack r2
         pop r4 off stack r2
         pop r5 off stack r2

@@ -7,13 +7,13 @@
 
 .section text
     call_main:
-        push r1 on stack r2 
-        push r3 on stack r2 
-        push r4 on stack r2 
 
-        goto main linking r1
+        # r5 := -34
+        # push r5 on stack r2 
+        # goto print_stack linking r1 
+        # output "\n"
+        # pop stack r2
+        # halt
         
-        pop r4 off stack r2
-        pop r3 off stack r2
-        pop r5 off stack r2
-        goto r5
+        goto main linking r1
+        halt
