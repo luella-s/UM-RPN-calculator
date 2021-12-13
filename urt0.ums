@@ -12,4 +12,3 @@
     r0 := 0
     r2 := endstack
     goto call_main linking r1
-    halt

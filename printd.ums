@@ -6,7 +6,7 @@
     r0 := 0
 
 .section text
-    new_line:
+    print_stack:
         push r1 on stack r2
         push r4 on stack r2
         push r3 on stack r2
@@ -19,25 +19,25 @@
         if (r5 <s 0) goto print_neg using r1
 
         push r5 on stack r2
-        goto print linking r1
+        goto print_pos linking r1
         
-        goto finish_new_line
+        goto finish_print_stack
 
     print_zero:
         r5 := 48
         output r5
 
         push r5 on stack r2
-        goto finish_new_line
+        goto finish_print_stack
 
     print_neg:
         r5 := r5 * -1
         output 45
         push r5 on stack r2
-        goto print linking r1
-        goto finish_new_line
+        goto print_pos linking r1
+        goto finish_print_stack
 
-    print:
+    print_pos:
         push r1 on stack r2
         push r4 on stack r2
         push r3 on stack r2
@@ -50,14 +50,14 @@
         pop stack r2
 
         push r4 on stack r2
-        goto print linking r1
+        goto print_pos linking r1
         pop stack r2
 
         r4 := r3 mod 10                     
         r4 := r4 + 48
         output r4
         
-        goto finish_print
+        goto finish_print_pos
 
     base_case_print:
         pop r3 off stack r2
@@ -65,15 +65,15 @@
         r4 := r4 + 48
         output r4
 
-        goto finish_print
+        goto finish_print_pos
 
-    finish_print:
+    finish_print_pos:
         pop r3 off stack r2
         pop r4 off stack r2
         pop r5 off stack r2
         goto r5
 
-    finish_new_line:
+    finish_print_stack:
         pop stack r2
 
         pop r3 off stack r2

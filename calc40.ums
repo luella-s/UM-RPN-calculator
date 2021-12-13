@@ -5,36 +5,54 @@
 .section data  
     jumptable:
         .space 256
-    # num_elts:
-    #     .space 1
+        .space 10000
+    valstack:
 
 .section init
     r0 := 0
+    r3 := valstack
+
+# r0 - zero register
+# r1 - input / return address / return value
+# r2 - call stack
+# r3 - value stack
+# r4 - non-volatile
+# r5 - volatile
+# r6 - temps
+# r7 - temps
 
 .section init
     init_jumptable:
         push r1 on stack r2
         push r4 on stack r2
-        push r3 on stack r2
 
-        r3 := jumptable             # start of jumptable
-        r4 := jumptable + 255       # end of table
+        r4 := jumptable             # start of jumptable
+        r5 := jumptable + 255       # end of table
+        
+        goto init_jumptable_loop
 
     init_jumptable_loop:
-        m[r0][r3] := input_error
-        r3 := r3 + 1
-        if (r3 <=s r4) goto init_jumptable_loop using r5
+        m[r0][r4] := input_error
+        r4 := r4 + 1
+        if (r4 <=s r5) goto init_jumptable_loop using r1
 
     finish_init_jumptable:
-        pop r3 off stack r2 
         pop r4 off stack r2
         pop r5 off stack r2
         goto r5
 
-    init_rest:
+
+.section text
+    input_error:
+        output "Unknown character '"
+        output r1
+        output "'"
+        goto waiting
+
+.section init
+    init_digits:
         push r1 on stack r2
         push r4 on stack r2
-        push r3 on stack r2
 
         m[r0][jumptable + '0'] := digit
         m[r0][jumptable + '1'] := digit
@@ -47,103 +65,108 @@
         m[r0][jumptable + '8'] := digit
         m[r0][jumptable + '9'] := digit
 
-        m[r0][jumptable + ' '] := waiting
-
-        m[r0][jumptable + 10] := print_stack
-
-        pop r3 off stack r2 
         pop r4 off stack r2
         pop r5 off stack r2
         goto r5
 
 .section text
-    input_error:
-        output "unknown character\n"
-        goto waiting
+    digit:
+        output "In digits\n"
+        r5 := r1 - '0'
+        push r5 on stack r3
+        goto entering
 
+.section init
+    init_rest:
+        m[r0][jumptable + ' '] := waiting
+        m[r0][jumptable + '\n'] := new_line
+
+.section text
     waiting:
         r1 := input()
         goto waiting_with_character
 
     waiting_with_character:
-        if (r1 == -1) goto finish_main using r5
-        r5 := jumptable + r1 
+        if (r1 == -1) r5 := exit using r5    # if EOF, set address to exit
+
+        r5 := jumptable + r1        # set address to jumptable offset
         r5 := m[r0][r5]
-        goto r5
+        goto r5 linking r1          # go to address
+        goto waiting
 
     entering:
         r1 := input()
-        if (r1 == 0) goto continue using r3
-        if (r1 == 1) goto continue using r3
-        if (r1 == 2) goto continue using r3
-        if (r1 == 3) goto continue using r3
-        if (r1 == 4) goto continue using r3
-        if (r1 == 5) goto continue using r3
-        if (r1 == 6) goto continue using r3
-        if (r1 == 7) goto continue using r3
-        if (r1 == 8) goto continue using r3
-        if (r1 == 9) goto continue using r3
+        if (r1 >=s '0') goto continue using r5
+        if (r1 <=s '9') goto continue using r5
         goto waiting_with_character
 
     continue:
-        goto check_empty linking r1      # asserts value stack isn't empty
+        goto check1 linking r1      # asserts value stack has at least 1 value
 
-        pop r3 off stack r2
-        r3 := r3 * 10
-        r3 := r3 + r1
-        push r3 on stack r2
+        pop r5 off stack r3
+        r5 := r5 * 10
+        r5 := r5 + r1
+        push r5 on stack r3
         goto entering
 
-    check_empty:
+    check1:
         push r1 on stack r2
         push r4 on stack r2
-        push r3 on stack r2
 
-        if (r2 == end_value_stack) goto underflow_error using r3
+        r5 := valstack - r3         # r5 holds number of values in value stack
+        if (r5 <s 1) goto underflow_error1 using r5
 
-        pop r3 off stack r2 
         pop r4 off stack r2
         pop r5 off stack r2
         goto r5
     
-    underflow_error:
+    underflow_error1:
         output "Stack underflow---expected at least 1 element\n"
 
-        pop r3 off stack r2 
         pop r4 off stack r2
         pop r5 off stack r2
         
         goto waiting
 
-    digit:
-        r5 := r1 - '0'
-        push r5 on stack r2
-        # num_elts := num_elts + 1
-        goto entering
-
-    print_stack:
+    new_line:
         push r1 on stack r2
         push r4 on stack r2
-        push r3 on stack r2
 
-        r3 := m[r0][r2 + 3]
-        # if r3 is the end of stack, go to finish_print_stack
-        push r2 on stack r2 
-        goto new_line linking r1
+        output "In new_line\n"
+
+        r4 := r3        # r4 points to the top of the value stack
+        goto new_line_loop
+
+    new_line_loop:
+        if (r4 == valstack) goto finish_new_line using r5
+
+        r1 := m[r0][r4]         # push value stack top into call stack
+        push r1 on stack r2
+        goto print_stack linking r5
+        output 10
         pop stack r2
+
+        r4 := r4 - 1
+        goto new_line_loop
+
+    finish_new_line:
+        pop r4 off stack r2
+        pop r5 off stack r2 
+        goto r5
 
     main:
         push r1 on stack r2
         push r4 on stack r2
-        push r3 on stack r2
-        goto init_jumptable linking r1
+
+        goto init_jumptable linking r1 
+        goto init_digits linking r1
         goto init_rest linking r1
+        goto waiting linking r1
 
-        end_stack_value := r2
-        goto waiting
-
-    finish_main:        
-        pop r3 off stack r2
         pop r4 off stack r2
         pop r5 off stack r2
-        goto r5
+        r1 := 0                     # return EXIT_SUCCESS
+        goto r5 
+
+    exit:
+        halt
