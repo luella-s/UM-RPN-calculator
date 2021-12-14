@@ -255,8 +255,6 @@
 
         if (r5 == 0) goto divide_by_zero using r1
 
-        ### WIP
-
         pop r5 off stack r3             # r5 holds y value (divisor)
         pop r4 off stack r3             # r4 holds x value (dividend)
 
@@ -357,8 +355,9 @@
         output "Stack underflow---expected at least 1 element\n"
 
         pop r4 off stack r2
-        pop r5 off stack r2
-        
+        pop r1 off stack r2
+
+        pop r4 off stack r2
         goto waiting
 
     check2:
@@ -369,18 +368,18 @@
         if (r5 <s 2) goto underflow_error2 using r5
 
         pop r4 off stack r2
-        pop r5 off stack r2
-        goto r5
+        pop r1 off stack r2
+        goto r1
     
     underflow_error2:
-        output "Stack underflow---expected at least 2 element\n"
+        output "Stack underflow---expected at least 2 elements\n"
 
         pop r4 off stack r2
-        pop r5 off stack r2
+        pop r1 off stack r2
 
         pop r4 off stack r2 
-        pop r5 off stack r2 
-        goto r5
+        pop r1 off stack r2 
+        goto waiting
         
 .section text
     main:

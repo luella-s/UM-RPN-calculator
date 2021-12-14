@@ -1,8 +1,67 @@
 r0: is zero
 r1: holds the return address
-r2: stack pointer
-r3: nonvolatile register (if used, must save & restore)
+r2: call stack pointer
+r3: value stack pointer
 r4: nonvolatile register (if used, must save & restore)
 r5: volatile register 
 r6: temporary register
 r7: temporary register
+
+/**************************************************************
+ *
+ *                     README
+ *
+ *     Assignment: COMP40 Homework 8 - UMASM
+ *     Authors:  Luella Sugiman (lsugim01), Yong Quan Tan (ytan04)
+ *     Date:     13 Dec 2021
+ *
+ **************************************************************/
+
+/* * * * * * * * * * Acknowledgements * * * * * * * * * */
+
+- Help from TAs during office hours
+- Lecture slides (example UMASM programs)
+
+
+/* * * * * * * * * * Correctly Implemented * * * * * * * * * */
+
+Our code passes our tests so it is correct to our knowledge.
+
+
+/* * * * * * * * * Departures from Calling Convention * * * * * * * * */
+
+r3 is used as a RPN value stack pointer.
+
+
+/* * * * * * * * * * Architecture * * * * * * * * * */
+
+The print module is a recursive function that takes 1 argument and outputs 
+one digit at a time, starting from the leftmost digit.
+
+The RPN value stack is a stack initialized in the calc40.ums file and is 
+pointed to by r3 (it's different from the call stack initialized in urt0.ums).
+
+
+/* * * * * * * * * * Sections Used * * * * * * * * * */
+
+text: contains code, including the implementation of procedure functions
+    and the main driver function.
+
+data: allocates space for data structures used - the call stack and RPN 
+    value stack.
+
+init: initializes both the call stack & RPN value stack pointers, sets
+    r0 to equal to 0 and initializes addresses for the jumptable.
+
+
+
+/* * * * * * * * * * Hours spent * * * * * * * * * */
+
+Hours spent analyzing:
+1h
+
+Hours spent writing assembly code:
+9h
+
+Hours spent debugging the calculator:
+2h
