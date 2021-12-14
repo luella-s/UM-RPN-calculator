@@ -12,15 +12,6 @@
     r0 := 0
     r3 := valstack
 
-# r0 - zero register
-# r1 - input / return address / return value
-# r2 - call stack
-# r3 - value stack
-# r4 - non-volatile
-# r5 - volatile
-# r6 - temps
-# r7 - temps
-
     init_jumptable:
         r4 := jumptable             # start of jumptable
         r5 := jumptable + 255       # end of table
@@ -53,67 +44,16 @@
 
 .section text
     digit:
-        output "In digits\n"
         r1 := r1 - '0'
         push r1 on stack r3
         goto entering
 
 .section init
-    init_rest:
+    init_base_ops:
         m[r0][jumptable + ' '] := waiting
         m[r0][jumptable + '\n'] := new_line
 
 .section text
-    waiting:
-        output "* In waiting\n"
-        r1 := input()
-        goto waiting_with_character
-
-    waiting_with_character:
-        output "* In waiting w char\n"
-        if (r1 == -1) r5 := exit using r4    # if EOF, set address to exit
-
-        r5 := jumptable + r1        # set address to jumptable offset
-        r5 := m[r0][r5]
-        goto r5 linking r4          # go to address
-        goto waiting
-
-    entering:
-        output "* In entering\n"
-        r1 := input()
-        if (r1 <s '0') goto waiting_with_character using r5
-        if (r1 >s '9') goto waiting_with_character using r5
-        goto continue
-
-    continue:
-        output "* In continue\n"
-
-        pop r5 off stack r3
-        r1 := r1 - '0'
-        r5 := r5 * 10
-        r5 := r5 + r1
-        push r5 on stack r3
-        goto entering
-
-    check1:
-        push r1 on stack r2
-        push r4 on stack r2
-
-        r5 := valstack - r3         # r5 holds number of values in value stack
-        if (r5 <s 1) goto underflow_error1 using r5
-
-        pop r4 off stack r2
-        pop r5 off stack r2
-        goto r5
-    
-    underflow_error1:
-        output "Stack underflow---expected at least 1 element\n"
-
-        pop r4 off stack r2
-        pop r5 off stack r2
-        
-        goto waiting
-
     new_line:
         push r1 on stack r2
         push r4 on stack r2
@@ -135,9 +75,314 @@
 
     finish_new_line:
         pop r4 off stack r2
+        pop r1 off stack r2 
+        goto waiting
+
+.section init 
+    init_binary_ops:
+        m[r0][jumptable + '+'] := add
+        m[r0][jumptable + '-'] := sub
+        m[r0][jumptable + '*'] := mult
+        m[r0][jumptable + '|'] := or        # TO DO: seg fault?!?
+        m[r0][jumptable + '&'] := and
+
+.section text 
+    add:
+        push r1 on stack r2
+        push r4 on stack r2
+
+        goto check2 linking r1          # enures at least 2 elements on value stack
+
+        pop r4 off stack r3             # r4 & r5 holds values to add
+        pop r5 off stack r3
+        r4 := r4 + r5 
+        push r4 on stack r3
+        
+        pop r4 off stack r2 
+        pop r1 off stack r2 
+        goto waiting
+    
+    sub:
+        push r1 on stack r2
+        push r4 on stack r2
+
+        goto check2 linking r1          # enures at least 2 elements on value stack
+
+        pop r4 off stack r3             # r4 & r5 holds values to subtract
+        pop r5 off stack r3
+        r4 := r5 - r4 
+        push r4 on stack r3
+        
+        pop r4 off stack r2 
+        pop r1 off stack r2 
+        goto waiting
+
+    mult:
+        push r1 on stack r2
+        push r4 on stack r2
+
+        goto check2 linking r1          # enures at least 2 elements on value stack
+
+        pop r4 off stack r3             # r4 & r5 holds values to multiply
+        pop r5 off stack r3
+        r4 := r4 * r5
+        push r4 on stack r3
+        
+        pop r4 off stack r2 
+        pop r1 off stack r2 
+        goto waiting
+
+    or:
+        push r1 on stack r2
+        push r4 on stack r2
+
+        goto check2 linking r1          # enures at least 2 elements on value stack
+
+        pop r4 off stack r3             # r4 & r5 holds values to OR
+        pop r5 off stack r3
+        r4 := r4 | r5
+        push r4 on stack r3
+        
+        pop r4 off stack r2 
+        pop r1 off stack r2 
+        goto waiting
+
+    and:
+        push r1 on stack r2
+        push r4 on stack r2
+
+        goto check2 linking r1          # enures at least 2 elements on value stack
+
+        pop r4 off stack r3             # r4 & r5 holds values to AND
+        pop r5 off stack r3
+        r4 := r4 & r5
+        push r4 on stack r3
+        
+        pop r4 off stack r2 
+        pop r1 off stack r2 
+        goto waiting
+
+.section init 
+    init_unary_ops:
+        m[r0][jumptable + '~'] := comp
+        m[r0][jumptable + 'c'] := negate
+
+.section text 
+    comp:
+        push r1 on stack r2
+
+        goto check1 linking r1          # enures at least 1 element on value stack
+
+        pop r5 off stack r3             # r5 holds value to complement
+        r5 := ~r5
+        push r5 on stack r3
+        
+        pop r1 off stack r2 
+        goto waiting
+
+    negate:
+        push r1 on stack r2
+
+        goto check1 linking r1          # enures at least 1 element on value stack
+
+        pop r5 off stack r3             # r5 holds value to negate
+        r5 := r5 * -1
+        push r5 on stack r3
+        
+        pop r1 off stack r2 
+        goto waiting
+
+.section init
+    init_rest_ops:
+        m[r0][jumptable + 's'] := swap
+        m[r0][jumptable + 'd'] := duplicate
+        m[r0][jumptable + 'p'] := pop_off
+        m[r0][jumptable + 'z'] := clear
+
+.section text
+    swap:
+        push r1 on stack r2
+        push r4 on stack r2
+
+        goto check2 linking r1          # enures at least 2 elements on value stack
+
+        pop r4 off stack r3
+        pop r5 off stack r3             # r4 & r5 holds value to swap
+        push r4 on stack r3             # push in reverse order
+        push r5 on stack r3
+        
+        pop r4 off stack r2 
+        pop r1 off stack r2 
+        goto waiting
+
+    duplicate:
+        push r1 on stack r2
+
+        goto check1 linking r1          # enures at least 1 element on value stack
+
+        pop r5 off stack r3             # r5 holds value to duplicate
+        push r5 on stack r3
+        push r5 on stack r3
+        
+        pop r1 off stack r2 
+        goto waiting
+
+    pop_off:
+        push r1 on stack r2 
+
+        goto check1 linking r1          # enures at least 1 element on value stack
+
+        pop r5 off stack r3
+
+        pop r1 off stack r2
+        goto waiting
+
+    clear:
+        r3 := valstack
+
+.section init
+    init_div_ops:
+        m[r0][jumptable + '/'] := div
+    
+.section text
+    div:
+        push r1 on stack r2 
+        push r4 on stack r2 
+
+        goto check2 linking r1          # enures at least 2 elements on value stack
+
+        r5 := m[r0][r3]
+
+        if (r5 == 0) goto divide_by_zero using r1
+
+        ### WIP
+
+        pop r5 off stack r3             # r5 holds y value (divisor)
+        pop r4 off stack r3             # r4 holds x value (dividend)
+
+        if (r4 <s 0) goto neg_x using r1 
+        if (r5 <s 0) goto neg_y using r1
+        
+        r4 := r4 / r5
+        push r4 on stack r3
+
+        goto finish_div
+
+    neg_x:
+        if (r5 <s 0) goto neg_both using r1
+
+        r4 := r4 * -1
+        r4 := r4 / r5 
+        r4 := r4 * -1
+        push r4 on stack r3
+
+        goto finish_div
+
+    neg_y:
+        r5 := r5 * -1
+        r4 := r4 / r5 
+        r4 := r4 * -1
+        push r4 on stack r3
+
+        goto finish_div
+
+    neg_both:
+        r4 := r4 * -1
+        r5 := r5 * -1
+        r4 := r4 / r5 
+        r4 := r4 * -1
+        push r4 on stack r3
+
+        goto finish_div
+
+    finish_div:
+        pop r4 off stack r2 
+        pop r1 off stack r2 
+        goto waiting
+
+    divide_by_zero:
+        output "Division by zero\n"
+
+        pop r4 off stack r2 
+        pop r1 off stack r2 
+        goto waiting
+
+
+.section text
+    waiting:
+        # output "* In waiting\n"
+        r1 := input()
+        goto waiting_with_character
+
+    waiting_with_character:
+        # output "* In waiting w char\n"
+        if (r1 == -1) r5 := exit using r4    # if EOF, set address to exit
+
+        r5 := jumptable + r1        # set address to jumptable offset
+        r5 := m[r0][r5]
+        goto r5
+        # goto r5 linking r4          # go to address
+        # goto waiting
+
+    entering:
+        # output "* In entering\n"
+        r1 := input()
+        if (r1 <s '0') goto waiting_with_character using r5
+        if (r1 >s '9') goto waiting_with_character using r5
+        goto continue
+
+    continue:
+        # output "* In continue\n"
+
+        pop r5 off stack r3
+        r1 := r1 - '0'
+        r5 := r5 * 10
+        r5 := r5 + r1
+        push r5 on stack r3
+        goto entering
+
+.section text
+    check1:
+        push r1 on stack r2
+        push r4 on stack r2
+
+        r5 := valstack - r3         # r5 holds number of values in value stack
+        if (r5 <s 1) goto underflow_error1 using r5
+
+        pop r4 off stack r2
+        pop r5 off stack r2
+        goto r5
+    
+    underflow_error1:
+        output "Stack underflow---expected at least 1 element\n"
+
+        pop r4 off stack r2
+        pop r5 off stack r2
+        
+        goto waiting
+
+    check2:
+        push r1 on stack r2
+        push r4 on stack r2
+
+        r5 := valstack - r3         # r5 holds number of values in value stack
+        if (r5 <s 2) goto underflow_error2 using r5
+
+        pop r4 off stack r2
+        pop r5 off stack r2
+        goto r5
+    
+    underflow_error2:
+        output "Stack underflow---expected at least 2 element\n"
+
+        pop r4 off stack r2
+        pop r5 off stack r2
+
+        pop r4 off stack r2 
         pop r5 off stack r2 
         goto r5
-
+        
+.section text
     main:
         push r1 on stack r2
         push r4 on stack r2
