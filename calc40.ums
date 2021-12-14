@@ -3,28 +3,41 @@
     .zero r0
 
 .section data  
-    jumptable:
-        .space 256
+    jumptable:                      # initialize jumptable of 256 elements
+        .space 256                  # corresponding to each ASCII character
         .space 10000
-    valstack:
+    valstack:                       # initialize value stack of 10000 elements
 
 .section init
     r0 := 0
     r3 := valstack
 
+    # name: init_jumptable
+    # purpose: initializes jumptable such that all 256 elements point 
+    #   to the input_error label
+    # expectations: 
+    #   r4 & r5 are volatile registers (true during init phase)
+    #   jumptable is initialized with 256 elements
     init_jumptable:
         r4 := jumptable             # start of jumptable
-        r5 := jumptable + 255       # end of table
+        r5 := jumptable + 255       # end of jumptable
         
         goto init_jumptable_loop
 
     init_jumptable_loop:
-        m[r0][r4] := input_error
+        m[r0][r4] := input_error    # set address to input_error label
         r4 := r4 + 1
-        if (r4 <=s r5) goto init_jumptable_loop using r1
+        # loop while end of jumptable hasn't been reached
+        if (r4 <=s r5) goto init_jumptable_loop using r1    
 
 
 .section text
+    # name: input_error
+    # purpose: handles unknown input - prints an error message and goes
+    #   into the waiting state
+    # how to call: goto input_error
+    # expectations: 
+    #   r1 is input
     input_error:
         output "Unknown character '"
         output r1
@@ -32,41 +45,69 @@
         goto waiting
 
 .section init
+    # name: init_digits
+    # purpose: initializes digits section of the jumptable to point to the 
+    #   digits label
+    # expectations: 
+    #   r0 is 0
+    #   r4 & r5 are volatile registers (true during init phase)
+    #   jumptable is initialized with 256 elements
     init_digits:
         r4 := jumptable + '0'
         r5 := jumptable + '9'
 
     init_digits_loop:
-        # output "Init digits\n"
         m[r0][r4] := digit
         r4 := r4 + 1
-        if (r4 <=s r5) goto init_digits_loop using r1
+        # loop through while end of digits section hasn't been reached yet
+        if (r4 <=s r5) goto init_digits_loop using r1   
 
 .section text
+    # name: digit
+    # purpose: handles digit input - pushes the digit onto the value stack
+    #   and goes into the entering state
+    # how to call: goto digits
+    # expectations: 
+    #   r0 is 0
+    #   r1 holds input
     digit:
-        r1 := r1 - '0'
+        r1 := r1 - '0'          # transform ASCII to value
         push r1 on stack r3
         goto entering
 
 .section init
+    # name: init_base_ops
+    # purpose: initializes the space & new line sections of the jumptable
+    # expectations: 
+    #   r0 is 0
+    #   jumptable is initialized with 256 elements
     init_base_ops:
         m[r0][jumptable + ' '] := waiting
         m[r0][jumptable + '\n'] := new_line
 
 .section text
+    # name: new_line
+    # purpose: handles new_line input - calls the print function for each
+    #   element in the value stack, then goes into waiting state
+    # how to call: goto new_line
+    # expectations: 
+    #   r0 is 0
+    #   r2 holds the call stack, r3 holds the value stack
+    #   r4 is non-volatile, r5 is volatile
     new_line:
         push r1 on stack r2
         push r4 on stack r2
 
-        r4 := r3        # r4 points to the top of the value stack
+        r4 := r3            # r4 (counter) points to the top of the value stack
         goto new_line_loop
 
     new_line_loop:
+        # if r4 (counter) reaches the end of the value stack, return
         if (r4 == valstack) goto finish_new_line using r5
 
-        r5 := m[r0][r4]         # push value stack top into call stack
+        r5 := m[r0][r4]     # push top of value stack onto call stack
         push r5 on stack r2
-        goto print_stack linking r1
+        goto print linking r1   # print that value
         output "\n"
         pop stack r2
 
@@ -79,6 +120,11 @@
         goto waiting
 
 .section init 
+    # name: init_binary_ops
+    # purpose: initializes the binary operations section of the jumptable
+    # expectations: 
+    #   r0 is 0
+    #   jumptable is initialized with 256 elements
     init_binary_ops:
         m[r0][jumptable + '+'] := add
         m[r0][jumptable + '-'] := sub
@@ -87,13 +133,20 @@
         m[r0][jumptable + '&'] := and
 
 .section text 
+    # name: add
+    # purpose: handles add input - adds the top 2 elements in the value stack,
+    #   pushes the answer, then goes into waiting state
+    # how to call: goto add
+    # expectations: 
+    #   r2 holds the call stack, r3 holds the value stack
+    #   r1 & r4 are non-volatile, r5 is volatile    
     add:
         push r1 on stack r2
         push r4 on stack r2
 
-        goto check2 linking r1          # enures at least 2 elements on value stack
+        goto check2 linking r1      # enures at least 2 elements on value stack
 
-        pop r4 off stack r3             # r4 & r5 holds values to add
+        pop r4 off stack r3         # r4 & r5 holds values to add
         pop r5 off stack r3
         r4 := r4 + r5 
         push r4 on stack r3
@@ -102,28 +155,42 @@
         pop r1 off stack r2 
         goto waiting
     
+    # name: sub
+    # purpose: handles sub input - subtracts the 2nd top element in the value 
+    #   stack from the top element, pushes the resulut, goes into waiting state
+    # how to call: goto sub
+    # expectations: 
+    #   r2 holds the call stack, r3 holds the value stack
+    #   r1 & r4 are non-volatile, r5 is volatile
     sub:
         push r1 on stack r2
         push r4 on stack r2
 
-        goto check2 linking r1          # enures at least 2 elements on value stack
+        goto check2 linking r1      # enures at least 2 elements on value stack
 
-        pop r4 off stack r3             # r4 & r5 holds values to subtract
-        pop r5 off stack r3
-        r4 := r5 - r4 
+        pop r4 off stack r3         # r4 is y
+        pop r5 off stack r3         # r5 is x
+        r4 := r5 - r4               # performs x - y
         push r4 on stack r3
         
         pop r4 off stack r2 
         pop r1 off stack r2 
         goto waiting
 
+    # name: mult
+    # purpose: handles mult input - multplies the top 2 elements in the value
+    #   stack, pushes the result, then goes into waiting state
+    # how to call: goto mult
+    # expectations: 
+    #   r2 holds the call stack, r3 holds the value stack
+    #   r1 & r4 are non-volatile, r5 is volatile
     mult:
         push r1 on stack r2
         push r4 on stack r2
 
-        goto check2 linking r1          # enures at least 2 elements on value stack
+        goto check2 linking r1      # enures at least 2 elements on value stack
 
-        pop r4 off stack r3             # r4 & r5 holds values to multiply
+        pop r4 off stack r3         # r4 & r5 holds values to multiply
         pop r5 off stack r3
         r4 := r4 * r5
         push r4 on stack r3
@@ -132,13 +199,20 @@
         pop r1 off stack r2 
         goto waiting
 
+    # name: or
+    # purpose: handles or input - applies bitwise OR on the top 2 elements in 
+    #   the value stack, pushes the result, then goes into waiting state
+    # how to call: goto or
+    # expectations: 
+    #   r2 holds the call stack, r3 holds the value stack
+    #   r1 & r4 are non-volatile, r5 is volatile
     or:
         push r1 on stack r2
         push r4 on stack r2
 
-        goto check2 linking r1          # enures at least 2 elements on value stack
+        goto check2 linking r1      # enures at least 2 elements on value stack
 
-        pop r4 off stack r3             # r4 & r5 holds values to OR
+        pop r4 off stack r3         # r4 & r5 holds values to bitwise OR
         pop r5 off stack r3
         r4 := r4 | r5
         push r4 on stack r3
@@ -147,13 +221,20 @@
         pop r1 off stack r2 
         goto waiting
 
+    # name: and
+    # purpose: handles and input - applies bitwise AND on the top 2 elements in 
+    #   the value stack, pushes the result, then goes into waiting state
+    # how to call: goto and
+    # expectations: 
+    #   r2 holds the call stack, r3 holds the value stack
+    #   r1 & r4 are non-volatile, r5 is volatile
     and:
         push r1 on stack r2
         push r4 on stack r2
 
-        goto check2 linking r1          # enures at least 2 elements on value stack
+        goto check2 linking r1      # enures at least 2 elements on value stack
 
-        pop r4 off stack r3             # r4 & r5 holds values to AND
+        pop r4 off stack r3         # r4 & r5 holds values to AND
         pop r5 off stack r3
         r4 := r4 & r5
         push r4 on stack r3
@@ -163,23 +244,42 @@
         goto waiting
 
 .section init 
+    # name: init_unary_ops
+    # purpose: initializes the unary operations section of the jumptable
+    # expectations: 
+    #   r0 is 0
+    #   jumptable is initialized with 256 elements
     init_unary_ops:
         m[r0][jumptable + '~'] := comp
         m[r0][jumptable + 'c'] := negate
 
 .section text 
+    # name: comp
+    # purpose: handles comp input - complements the top element in
+    #   the value stack, pushes the result, then goes into waiting state
+    # how to call: goto comp
+    # expectations: 
+    #   r2 holds the call stack, r3 holds the value stack
+    #   r1 is non-volatile, r5 is volatile
     comp:
         push r1 on stack r2
 
-        goto check1 linking r1          # enures at least 1 element on value stack
+        goto check1 linking r1      # enures at least 1 element on value stack
 
-        pop r5 off stack r3             # r5 holds value to complement
+        pop r5 off stack r3         # r5 holds value to complement
         r5 := ~r5
         push r5 on stack r3
         
         pop r1 off stack r2 
         goto waiting
 
+    # name: negate
+    # purpose: handles negate input - negates the top element in
+    #   the value stack, pushes the result, then goes into waiting state
+    # how to call: goto negate
+    # expectations: 
+    #   r2 holds the call stack, r3 holds the value stack
+    #   r1 is non-volatile, r5 is volatile
     negate:
         push r1 on stack r2
 
@@ -193,6 +293,11 @@
         goto waiting
 
 .section init
+    # name: init_rest_ops
+    # purpose: initializes the rest of the valid operations on the jumptable
+    # expectations: 
+    #   r0 is 0
+    #   jumptable is initialized with 256 elements
     init_rest_ops:
         m[r0][jumptable + 's'] := swap
         m[r0][jumptable + 'd'] := duplicate
@@ -200,33 +305,54 @@
         m[r0][jumptable + 'z'] := clear
 
 .section text
+    # name: swap
+    # purpose: handles swap input - swaps the top 2 elements in the value 
+    #   stack, then goes into waiting state
+    # how to call: goto swap
+    # expectations: 
+    #   r2 holds the call stack, r3 holds the value stack
+    #   r1 & r4 are non-volatile, r5 is volatile
     swap:
         push r1 on stack r2
         push r4 on stack r2
 
-        goto check2 linking r1          # enures at least 2 elements on value stack
+        goto check2 linking r1      # enures at least 2 elements on value stack
 
         pop r4 off stack r3
-        pop r5 off stack r3             # r4 & r5 holds value to swap
-        push r4 on stack r3             # push in reverse order
+        pop r5 off stack r3         # r4 & r5 holds value to swap
+        push r4 on stack r3         # push elements in reverse order
         push r5 on stack r3
         
         pop r4 off stack r2 
         pop r1 off stack r2 
         goto waiting
 
+    # name: duplicate
+    # purpose: handles duplicate input - duplicates the top element in the value 
+    #   stack, then goes into waiting state
+    # how to call: goto duplicate
+    # expectations: 
+    #   r2 holds the call stack, r3 holds the value stack
+    #   r1 is non-volatile, r5 is volatile
     duplicate:
         push r1 on stack r2
 
-        goto check1 linking r1          # enures at least 1 element on value stack
+        goto check1 linking r1      # enures at least 1 element on value stack
 
-        pop r5 off stack r3             # r5 holds value to duplicate
+        pop r5 off stack r3         # r5 holds value to duplicate
         push r5 on stack r3
         push r5 on stack r3
         
         pop r1 off stack r2 
         goto waiting
 
+    # name: pop_off
+    # purpose: handles pop input - pops the top element in the value 
+    #   stack, then goes into waiting state
+    # how to call: goto pop_off
+    # expectations: 
+    #   r2 holds the call stack, r3 holds the value stack
+    #   r1 is non-volatile, r5 is volatile
     pop_off:
         push r1 on stack r2 
 
@@ -237,28 +363,48 @@
         pop r1 off stack r2
         goto waiting
 
+    # name: clear
+    # purpose: handles clear input - clears the value stack,
+    #   then goes into waiting state
+    # how to call: goto clear
+    # expectations: 
+    #   r3 holds the value stack
     clear:
-        r3 := valstack
+        r3 := valstack      # set r3 to point to the top of the value stack
+        goto waiting
 
 .section init
-    init_div_ops:
+    # name: init_div_op
+    # purpose: initializes the division operation on the jumptable
+    # expectations: 
+    #   r0 is 0
+    #   jumptable is initialized with 256 elements
+    init_div_op:
         m[r0][jumptable + '/'] := div
     
 .section text
+    # name: div
+    # purpose: handles div input - divides the 2nd top element in the value 
+    #   stack with the top element, pushes the result, goes into waiting state
+    # how to call: goto div
+    # expectations: 
+    #   r2 holds the call stack, r3 holds the value stack
+    #   r1 & r4 are non-volatile, r5 is volatile
     div:
         push r1 on stack r2 
         push r4 on stack r2 
 
-        goto check2 linking r1          # enures at least 2 elements on value stack
+        goto check2 linking r1      # enures at least 2 elements on value stack
 
         r5 := m[r0][r3]
 
+        # if y is 0, output and error message & return
         if (r5 == 0) goto divide_by_zero using r1
 
-        pop r5 off stack r3             # r5 holds y value (divisor)
-        pop r4 off stack r3             # r4 holds x value (dividend)
+        pop r5 off stack r3         # r5 holds y value (divisor)
+        pop r4 off stack r3         # r4 holds x value (dividend)
 
-        if (r4 <s 0) goto neg_x using r1 
+        if (r4 <s 0) goto neg_x using r1
         if (r5 <s 0) goto neg_y using r1
         
         r4 := r4 / r5
@@ -269,6 +415,7 @@
     neg_x:
         if (r5 <s 0) goto neg_both using r1
 
+        # if x is negative, make x positive, then make the result negative
         r4 := r4 * -1
         r4 := r4 / r5 
         r4 := r4 * -1
@@ -277,6 +424,7 @@
         goto finish_div
 
     neg_y:
+        # if y is negative, make y positive, then make the result negative
         r5 := r5 * -1
         r4 := r4 / r5 
         r4 := r4 * -1
@@ -285,10 +433,10 @@
         goto finish_div
 
     neg_both:
+        # if both are negative, make both positive
         r4 := r4 * -1
         r5 := r5 * -1
         r4 := r4 / r5 
-        r4 := r4 * -1
         push r4 on stack r3
 
         goto finish_div
@@ -298,6 +446,13 @@
         pop r1 off stack r2 
         goto waiting
 
+    # name: divide_by_zero
+    # purpose: handles the case where y is 0 (in division) - outputs an error
+    #   message and goes into waiting state
+    # how to call: goto divide_by_zero
+    # expectations: 
+    #   r2 holds the call stack
+    #   r1 & r4 are pushed onto the call stack r2 previously
     divide_by_zero:
         output "Division by zero\n"
 
@@ -307,31 +462,54 @@
 
 
 .section text
+    # name: waiting
+    # purpose: waiting state - waits for input, then transfers control to 
+    #   waiting_with_character
+    # how to call: goto waiting
+    # expectations: 
+    #   r1 is volatile
     waiting:
-        # output "* In waiting\n"
         r1 := input()
         goto waiting_with_character
 
+    # name: waiting_with_character
+    # purpose: waiting_with_character state - checks if character is EOF,
+    #   then transfers control to the address in the character's corresponding
+    #   spot in the jumptable
+    # how to call: goto waiting_with_character
+    # expectations: 
+    #   r1 holds input character
+    #   r4 & r5 are volatile
     waiting_with_character:
-        # output "* In waiting w char\n"
         if (r1 == -1) r5 := exit using r4    # if EOF, set address to exit
 
-        r5 := jumptable + r1        # set address to jumptable offset
+        r5 := jumptable + r1            # set address to jumptable offset
         r5 := m[r0][r5]
-        goto r5
-        # goto r5 linking r4          # go to address
-        # goto waiting
+        goto r5                         # go to address
 
+    # name: entering
+    # purpose: entering state - waits for input, then transfers control flow 
+    #   depending on whether the character is a digit or non-digit character
+    # how to call: goto entering
+    # expectations: 
+    #   r1, r4 & r5 are volatile
+    #   previous input is a digit
     entering:
-        # output "* In entering\n"
         r1 := input()
         if (r1 <s '0') goto waiting_with_character using r5
         if (r1 >s '9') goto waiting_with_character using r5
         goto continue
 
+    # name: continue
+    # purpose: continue state - multiplies the element at the top of the value
+    #   stack by 10, adds the input digit & stores it back in the value stack
+    # how to call: goto continue
+    # expectations: 
+    #   r1 holds input (a digit)
+    #   r3 holds the value stack
+    #   r4 & r5 are volatile
+    #   top of the value stack is a digit
     continue:
-        # output "* In continue\n"
-
         pop r5 off stack r3
         r1 := r1 - '0'
         r5 := r5 * 10
@@ -340,11 +518,19 @@
         goto entering
 
 .section text
+    # name: check1
+    # purpose: asserts there's at least 1 value in the value stack
+    # how to call: goto check1 linking r1
+    # expectations: 
+    #   r1 holds return address
+    #   r2 holds call stack, r3 holds the value stack
+    #   r4 is non-volatile, r5 is volatile
     check1:
         push r1 on stack r2
         push r4 on stack r2
 
         r5 := valstack - r3         # r5 holds number of values in value stack
+        # if there's less than 1 element, output error & enter waiting state
         if (r5 <s 1) goto underflow_error1 using r5
 
         pop r4 off stack r2
@@ -357,14 +543,23 @@
         pop r4 off stack r2
         pop r1 off stack r2
 
+        # pop off element pushed in by function that calls check1
         pop r4 off stack r2
         goto waiting
 
+    # name: check2
+    # purpose: asserts there's at least 2 value in the value stack
+    # how to call: goto check2 linking r1
+    # expectations: 
+    #   r1 holds return address
+    #   r2 holds call stack, r3 holds the value stack
+    #   r4 is non-volatile, r5 is volatile
     check2:
         push r1 on stack r2
         push r4 on stack r2
 
         r5 := valstack - r3         # r5 holds number of values in value stack
+        # if there's less than 2 elements, output error & enter waiting state
         if (r5 <s 2) goto underflow_error2 using r5
 
         pop r4 off stack r2
@@ -377,11 +572,19 @@
         pop r4 off stack r2
         pop r1 off stack r2
 
+        # pop off elements poushed in by function that calls check2
         pop r4 off stack r2 
         pop r1 off stack r2 
         goto waiting
         
 .section text
+    # name: main
+    # purpose: driver function that starts the program, then returns code 1
+    #   on exit
+    # expectations: 
+    #   r1 holds return address
+    #   r2 holds the call stack, r3 holds the value stack
+    #   r4 is non-volatile, r5 is volatile
     main:
         push r1 on stack r2
         push r4 on stack r2
@@ -393,6 +596,10 @@
         r1 := 0                     # return EXIT_SUCCESS
         goto r5 
 
+    # name: exit
+    # purpose: halts the program on an input of EOF
+    # expectations: 
+    #   r4 & r5 are previously pushed into stack r2
     exit:
         pop r4 off stack r2
         pop r5 off stack r2

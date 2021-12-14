@@ -25,13 +25,15 @@ r7: temporary register
 
 /* * * * * * * * * * Correctly Implemented * * * * * * * * * */
 
-Our code passes our tests so it is correct to our knowledge.
-
+Our program produces the exact same output as the reference program,
+tested until 1,000,000 random inputs. All parts are correctly 
+implemented.
 
 /* * * * * * * * * Departures from Calling Convention * * * * * * * * */
 
 r3 is used as a RPN value stack pointer.
-
+r4 is considered as a volatile register in some labels where 
+its value doesn't need to be preserved (i.e. state labels).
 
 /* * * * * * * * * * Architecture * * * * * * * * * */
 
@@ -39,8 +41,7 @@ The print module is a recursive function that takes 1 argument and outputs
 one digit at a time, starting from the leftmost digit.
 
 The RPN value stack is a stack initialized in the calc40.ums file and is 
-pointed to by r3 (it's different from the call stack initialized in urt0.ums).
-
+pointed to by r3 (different from the call stack initialized in urt0.ums).
 
 /* * * * * * * * * * Sections Used * * * * * * * * * */
 
@@ -52,8 +53,6 @@ data: allocates space for data structures used - the call stack and RPN
 
 init: initializes both the call stack & RPN value stack pointers, sets
     r0 to equal to 0 and initializes addresses for the jumptable.
-
-
 
 /* * * * * * * * * * Hours spent * * * * * * * * * */
 

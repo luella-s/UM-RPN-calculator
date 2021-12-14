@@ -6,7 +6,7 @@
     r0 := 0
 
 .section text
-    print_stack:
+    print:
         push r1 on stack r2
         push r4 on stack r2
         push r3 on stack r2
@@ -22,13 +22,13 @@
         goto print_pos linking r1
         pop stack r2
         
-        goto finish_print_stack
+        goto finish_print
 
     print_zero:
         r5 := 48
         output r5
 
-        goto finish_print_stack
+        goto finish_print
 
     print_neg:
         r5 := r5 * -1
@@ -37,7 +37,7 @@
         goto print_pos linking r1
         pop stack r2
 
-        goto finish_print_stack
+        goto finish_print
 
     print_pos:
         push r1 on stack r2
@@ -59,7 +59,7 @@
         r4 := r4 + 48
         output r4
         
-        goto finish_print_stack
+        goto finish_print
 
     base_case_print:
         pop r3 off stack r2
@@ -67,9 +67,9 @@
         r4 := r4 + 48
         output r4
 
-        goto finish_print_stack
+        goto finish_print
 
-    finish_print_stack:
+    finish_print:
         pop r3 off stack r2
         pop r4 off stack r2
         pop r5 off stack r2

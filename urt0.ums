@@ -4,7 +4,7 @@
 
 .section data
         .space 10000
-    endstack:
+    endstack:       # label points to the end of a stack with 10000 elements
 
 .section init
     r0 := 0
